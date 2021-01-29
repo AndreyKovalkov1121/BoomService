@@ -59,14 +59,14 @@ class APIController extends Controller
                 if($checklogin)
                 {       
                     $user = User::where('email', $request->email)->get()->first();
-                    $user->token = $token;
-                    $user->save();
+                    // $user->token = $token;
+                    // $user->save();
 
                     $response = [
                         'status' => true,
                         'data' => [
                             'id' => $user->id,
-                            'token' => $user->token,                        
+                            'token' => $token,                        
                             'email' => $user->email, 
                             'message' => "login sucess",
                         ],
@@ -79,7 +79,7 @@ class APIController extends Controller
                     'status' => true,
                     'data' => [
                         'id' => $user->id,
-                        'token' => $user->token,                        
+                        'token' => $token,                        
                         'email' => $user->email, 
                         'message' => "login failed",
                     ],
@@ -128,8 +128,6 @@ class APIController extends Controller
                         'status' => true,
                         'data' => [
                             'id' => $user->id,
-                            'token' => $user->token,
-                            // 'postcode' => $user->postcode,
                             'address' => $user->address,
                             'longitude' => $user->longitude,
                             'latitude' => $user->latitude,                        
@@ -149,8 +147,6 @@ class APIController extends Controller
                     'status' => true,
                     'data' => [
                         'id' => $user->id,
-                        'token' => $user->token,
-                        // 'postcode' => $user->postcode,
                         'address' => $user->address,
                         'longitude' => $user->longitude,
                         'latitude' => $user->latitude,                        
@@ -193,8 +189,7 @@ class APIController extends Controller
         $user->password = \Hash::make($request->password);
         $user->email = $request->email;
         $user->mobile = $request->mobile;
-        $user->status = 0;
-        $user->token = '';      
+        $user->status = 0;    
         
         $token = self::getToken($request->email, $request->password);    
         
@@ -222,7 +217,7 @@ class APIController extends Controller
 
                 //update user token
                 
-                $user->token = $token;                 
+                //$user->token = $token;                 
 
                 do {
                     $boomid = substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'),1,6);                    
@@ -238,7 +233,7 @@ class APIController extends Controller
                     'status' => true,
                     'data' => [
                         'id' => $user->id,
-                        'token' => $user->token,
+                        'token' => $token,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
                         // 'postcode' => $user->postcode,
@@ -290,7 +285,7 @@ class APIController extends Controller
         $user->mobile = $request->mobile;
         $user->status = 0;
         $user->boomid = $request->boomid;
-        $user->token = '';
+        
         
         $token = self::getToken($request->email, $request->password);       
         
@@ -313,17 +308,13 @@ class APIController extends Controller
                 if (!is_string($token)) {
                     return response()->json(['status' => false, 'data' => 'Token generation failed'], 201);
                 }
-                $user = User::where('email', $request->email)->get()->first();
-                //update user token
                 
-                $user->token = $token; 
-                $user->save();
                 // return response
                 $response = [
                     'status' => true,
                     'data' => [
                         'id' => $user->id,
-                        'token' => $user->token,
+                        'token' => $token,
                         'first_name' => $user->first_name,
                         'last_name' => $user->last_name,
                         // 'postcode' => $user->postcode,

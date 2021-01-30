@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Http\Requests\RegistrationFormRequest;
 use Illuminate\Support\Str;
+use App\partners;
+use App\category;
+use App\service;
+use App\teams;
+
 class APIController extends Controller
 {
     /**
@@ -57,7 +62,7 @@ class APIController extends Controller
             {
                 $checklogin = User::where('email', $request->email)->where('password', $request->password)->get();
                 if($checklogin)
-                {       
+                {  
                     $user = User::where('email', $request->email)->get()->first();
                     // $user->token = $token;
                     // $user->save();
@@ -91,7 +96,7 @@ class APIController extends Controller
         }catch(\Throwable $e){
             $response = ['status' => false, 'data' => 'Couldnt login user.'];
             return response()->json($response, 201);
-        }          
+        }    
         
     }
 
@@ -116,10 +121,10 @@ class APIController extends Controller
 
                 /************* check lock ***************/
                 if($user->status == 1){
-                    $lock_status = "UnLocked";
+                    $lock_status = "Home Boom button is UnLocked";
                 }
                 else{
-                    $lock_status = "Locked";
+                    $lock_status = "Home Boom button is Locked";
                 }
                     
                 if($user->save())
@@ -221,11 +226,11 @@ class APIController extends Controller
 
                 do {
                     $boomid = substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'),1,6);                    
-                    $current_code = User::where('boomid', $boomid)->get()->first();
+                    $current_code = User::where('homebtnid', $boomid)->get()->first();
                 }
                 while(!empty($current_code));               
 
-                $user->boomid = $boomid;              
+                $user->homebtnid = $boomid;              
 
                 $user->save();
                 // return response
@@ -262,7 +267,7 @@ class APIController extends Controller
 
     
     public function invite_users(Request $request)
-    {
+    {   
         $checkEmail = User::where('email', $request->email)->first();        
         $checkPhone = User::where('mobile', $request->mobile)->first(); 
         if ($checkPhone || $checkEmail) {
@@ -284,12 +289,12 @@ class APIController extends Controller
         $user->email = $request->email;
         $user->mobile = $request->mobile;
         $user->status = 0;
-        $user->boomid = $request->boomid;
+        $user->homebtnid = $request->boomid;
         
         
         $token = self::getToken($request->email, $request->password);       
         
-        try{
+        try{            
             /********* check validate ********/
             $request->validate([
                 'first_name' => ['required', 'string', 'max:255'],
@@ -297,10 +302,10 @@ class APIController extends Controller
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
                 'password' => ['required', 'string', 'min:8'],
                 'mobile' => ['required'],
-            ]);         
+            ]);             
 
 
-            if($user->save()){               
+            if($user->save()){                              
 
                 //generate token
                 $token = self::getToken($request->email, $request->password);
@@ -324,7 +329,7 @@ class APIController extends Controller
                         'mobile' => $user->mobile,                        
                         'email' => $user->email,                    
                         'status' => $user->status,
-                        'boomid' => $user->boomid,
+                        'boomid' => $user->homebtnid,
                     ],
                 ];
 
@@ -340,4 +345,58 @@ class APIController extends Controller
 
         return response()->json($response, 201);
     }
+
+    public function partner_login(Request $request)
+    {
+        $partner_email = $request->partner_email;
+        $password = $request->password;
+
+        $token = self::getToken($partner_email, $password);   
+        return $token;        
+
+        try{
+            if (!is_string($token)) {
+                return response()->json(['status' => false, 'data' => 'Token generation failed'], 201);
+            }
+            
+            if($token != null)
+            {
+                $checklogin = partners::where('partner_email', $request->partner_email)->where('password', $request->password)->get();
+                if($checklogin)
+                {       
+                    $user = partners::where('partner_email', $request->partner_email)->get()->first();
+                    // $user->token = $token;
+                    // $user->save();
+
+                    $response = [
+                        'status' => true,
+                        'data' => [
+                            'id' => $user->id,
+                            'token' => $token,                        
+                            'email' => $user->partner_email, 
+                            'message' => "login sucess",
+                        ],
+                    ];     
+                }
+                               
+            }
+            else{
+                $response = [
+                    'status' => true,
+                    'data' => [
+                        'id' => $user->id,
+                        'token' => $token,                        
+                        'email' => $user->partner_email, 
+                        'message' => "login failed",
+                    ],
+                ];
+
+            }
+            return response()->json($response, 201);  
+
+        }catch(\Throwable $e){
+            $response = ['status' => false, 'data' => 'Couldnt login user.'];
+            return response()->json($response, 201);
+        }       
+    }    
 }

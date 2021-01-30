@@ -18,6 +18,8 @@ class CreateCategoriesTable extends Migration
             $table->string('category_name');
             $table->string('expires');
             $table->string('postcode');
+            $table->integer('status');
+            $table->string('boomid')->nullable();
             $table->timestamps();
         });
     }

@@ -10,12 +10,33 @@ use App\service;
 use App\partners;
 use App\teams;
 use App\User;
+use Tymon\JWTAuth\Exceptions\JWTException;
+
 
 class HomeController extends Controller
 {
+    private function getToken($email, $password)
+    {
+        $token = null;
+        //$credentials = $request->only('email', 'password');
+        try {
+            if (!$token = JWTAuth::attempt(['email' => $email, 'password' => $password])) {
+                return response()->json([
+                    'response' => 'error',
+                    'message' => 'Password or email is invalid..',
+                    'token' => $token,
+                ]);
+            }
+        } catch (JWTAuthException $e) {
+            return response()->json([
+                'response' => 'error',
+                'message' => 'Token creation failed',
+            ]);
+        }
+        return $token;
+    }
     public function create_categories(Request $request)
-    {      
-
+    {
         $category_name = $request->category_name;
         $service_name1 = $request->service_name1;
         $normal_price1 = $request->normal_price1;
@@ -48,6 +69,7 @@ class HomeController extends Controller
         $categories->category_name = $category_name;
         $categories->expires = $expires;
         $categories->postcode = $postcodes;
+        $categories->status = 0; 
         if($categories->save())
         {
             $categoryid = category::select('id')->where('category_name', $request->category_name)->first();
@@ -93,10 +115,23 @@ class HomeController extends Controller
         $category_name = $request->category_name;
         $partner_name = $request->partner_name;
         $address = $request->address;
+        $partner_email = $request->partner_email;
+        $password =\Hash::make($request->password);;
         $postcodes = $request->postcodes;
         $contact_name = $request->contact_name;
         $email = $request->email;
-        $tel_number = $request->telephone;       
+        $tel_number = $request->telephone;
+        
+        $checkPartner = partners::where('partner_name', $request->partner_name)->first();         
+        
+        if($checkPartner)
+        {
+            $response = [
+                'status' => false,
+                'message' => 'already registed partner',
+            ];
+            return response()->json($response);
+        }
 
         $checkPartner = partners::where('partner_name', $request->partner_name)->first();
         
@@ -121,24 +156,39 @@ class HomeController extends Controller
         $partners->category_id = $categoryid->id;
         $partners->partner_name = $partner_name;
         $partners->address = $address;
+        $partners->partner_email = $partner_email;
+        $partners->password = $password;
         $partners->postcodes = $postcodes;
         $partners->contact_userid = $contact_id->id;
         $partners->email = $email;
         $partners->telephone = $tel_number;
 
-        $team_arr =  json_decode($request->team,true);
-        $a =  $request->team;
-        return $request->team;
+        // $team_arr =  json_decode($request->team,true);
+        // $a =  $request->team;
+        // return $request->team;
 
-        // if($partners->save())
-        // {
-             $team_arr =  json_decode($request->team,true);
-        //     return $team_arr[0];
-        // }
-        // else{
-        //     $response = ['status' => false, 'data' => 'Could not register partner.'];
-        //     return response()->json($response, 201);
-        // }
+        if($partners->save())
+        {
+            $response = [
+                'status' => true,
+                'data' => [
+                    'category_name' =>$category_name,
+                    'partner_name' => $partners->partner_name,
+                    'address'=> $partners->address,
+                    'partner_email'=> $partners->partner_email,
+                    'postcodes'=> $partners->postcodes,
+                    'contact_name'=> $contact_name,
+                    'email'=> $partners->email,
+                    'telephone'=> $partners->telephone,
+                    'message'=>'partners was added successfully.'
+                ],
+            ];
+        }
+        else{
+            $response = ['status' => false, 'data' => 'Could not register partner.'];
+            return response()->json($response, 201);
+        }
+        return response()->json($response, 201);
     }
     public function categories(Request $request)
     {
@@ -154,12 +204,46 @@ class HomeController extends Controller
         {
             $category_arr['name'] = $data->category_name;
             $category_arr['expires'] = $data->expires;
-            $category_arr['service'] = service::where('category_id',$data->id)->get();
+            //$category_arr['service'] = service::where('category_id',$data->id)->get();
             $category_arr['postcode'] = $data->postcode;
         }      
         
         $response = ['status' => true, 'data' => $category_arr];
         return response()->json($response, 201);
+
+    }
+    public function unlock_category(Request $request)
+    { 
+        $category_name = $request->category_name;
+        $category = category::where('category_name',$category_name)->get()->first();
+       
+        do {
+            $boomid = substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'),1,8);                    
+            $current_code = category::where('boomid', $boomid)->get()->first();
+        }
+        while(!empty($current_code));               
+        $category->status = 1;
+        $category->boomid = $boomid;   
+        if($category->save())
+        {
+            $category_arr = [];
+            $category_arr['name'] = $category->category_name;
+            $category_arr['expires'] = $category->expires;
+            if($category->status == 1)
+            {
+                $category_arr['expires'] = "UnLocked"; 
+            }
+            $category_arr['boomID'] = $category->boomid; 
+            $category_arr['service'] = service::where('category_id',$category->id)->get();
+            $category_arr['postcode'] = $category->postcode;
+
+            $response = ['status' => true, 'data' => $category_arr];
+            return response()->json($response, 201);
+        }
+        else{
+            $response = ['status' => false, 'message' => "Data is empty"];
+            return response()->json($response, 201);
+        }
 
     }
     public function partners(Request $request)
@@ -184,12 +268,34 @@ class HomeController extends Controller
             $partner_arr['contact_userid'] = $first_name->first_name." ".$last_name->last_name;
             $partner_arr['email'] = $data->email;
             $partner_arr['telephone'] = $data->telephone; 
-            $partner_arr['team'] = teams::where('partner_id',$data->id)->get();
-           
+            $partner_arr['team'] = teams::where('partner_id',$data->id)->get();           
         }      
         
         $response = ['status' => true, 'data' => $partner_arr];
         return response()->json($response, 201);
 
+    }
+    public function checkBoomid(Request $request)
+    {
+        $partner_name = $request->partner_name;
+        $boomid = $request->boomid;
+        $partner = partners::where('partner_name',$partner_name)->get()->first();
+        $category = category::where('id',$partner->category_id)->where('boomid',$boomid)->get()->first();
+        if($category)
+        {
+            $response = [
+                'status' => 'ok',
+                'data' => [
+                    'partner name' =>$partner->partner_name,
+                    'boomid' => $category->boomid,
+                    'address'=> $partner->address,                    
+                ],
+            ];
+        }
+        else
+        {
+            $response = ['status' => false, 'message' => "Data is empty"];           
+        }
+        return response()->json($response, 201);
     }
 }

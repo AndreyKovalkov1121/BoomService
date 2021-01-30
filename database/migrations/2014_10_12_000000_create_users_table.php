@@ -26,7 +26,7 @@ class CreateUsersTable extends Migration
             $table->string('mobile')->nullable();
             $table->integer('status');            
             $table->timestamp('email_verified_at')->nullable();           
-            $table->string('boomid')->nullable(); 
+            $table->string('homebtnid')->nullable(); 
 
             //$table->rememberToken();
             $table->timestamps();
